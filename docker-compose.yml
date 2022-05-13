@@ -1,0 +1,51 @@
+version: "3.9"
+services:
+  mysql:
+    image: mysql:5.7
+    command: mysqld --sql_mode="" --innodb-lru-scan-depth=256 --skip-name-resolve --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max_allowed_packet=1250000000
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: main
+      MYSQL_USER: main
+      MYSQL_PASSWORD: main
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./database/scripts:/docker-entrypoint-initdb.d
+      - ./database/data:/var/lib/mysql
+  composer:
+    image: composer
+    volumes:
+      - ./app:/app
+    command: "composer install --ignore-platform-reqs --no-scripts"
+  php:
+    image: phpserver
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+      args:
+        - UID=1001
+        - GID=1001
+    user: www-data
+    working_dir: /var/www/
+    environment:
+      # PHP config:
+      - PHP_MEMORY_LIMIT=512M
+      - PHP_MAX_EXECUTION_TIME=120
+    ports:
+      - "8080:80"
+    volumes:
+      - ./app:/var/www
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "8025:8025"
+  adminer:
+    image: adminer
+    environment:
+      ADMINER_DESIGN: nette
+      ADMINER_PLUGINS: tables-filter json-column
+    ports:
+      - "8000:8080"
+    depends_on:
+      - mysql
